@@ -1,0 +1,110 @@
+{
+  "common": {
+    "appName": "FoodHub",
+    "welcome": "Welcome",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close"
+  },
+  "nav": {
+    "home": "Home",
+    "menu": "Menu",
+    "orders": "Orders",
+    "cart": "Cart",
+    "profile": "Profile",
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "promotions": "Promotions",
+    "logout": "Logout"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "customer": {
+    "exploreRestaurants": "Explore Restaurants",
+    "orderNow": "Order Now",
+    "addToCart": "Add to Cart",
+    "viewCart": "View Cart",
+    "checkout": "Checkout",
+    "trackOrder": "Track Order",
+    "orderHistory": "Order History",
+    "favorites": "Favorites"
+  },
+  "restaurant": {
+    "manageMenu": "Manage Menu",
+    "addMenuItem": "Add Menu Item",
+    "editMenuItem": "Edit Menu Item",
+    "orders": "Orders",
+    "newOrders": "New Orders",
+    "activeOrders": "Active Orders",
+    "completedOrders": "Completed Orders"
+  },
+  "driver": {
+    "availableOrders": "Available Orders",
+    "myDeliveries": "My Deliveries",
+    "acceptOrder": "Accept Order",
+    "pickupComplete": "Pickup Complete",
+    "deliveryComplete": "Delivery Complete",
+    "navigation": "Navigation",
+    "goOnline": "Go Online",
+    "goOffline": "Go Offline"
+  },
+  "order": {
+    "orderNumber": "Order #",
+    "status": "Status",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "deliveryFee": "Delivery Fee",
+    "tax": "Tax",
+    "discount": "Discount",
+    "estimatedTime": "Estimated Time",
+    "deliveryAddress": "Delivery Address",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "preparing": "Preparing",
+    "ready": "Ready for Pickup",
+    "picked_up": "Picked Up",
+    "on_the_way": "On the Way",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled"
+  },
+  "analytics": {
+    "overview": "Overview",
+    "revenue": "Revenue",
+    "orders": "Orders",
+    "customers": "Customers",
+    "growth": "Growth",
+    "topItems": "Top Items",
+    "recentOrders": "Recent Orders",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly"
+  },
+  "promotion": {
+    "applyCode": "Apply Promo Code",
+    "enterCode": "Enter code",
+    "apply": "Apply",
+    "codeApplied": "Code applied successfully",
+    "invalidCode": "Invalid or expired code",
+    "minOrder": "Minimum order"
+  }
+}
