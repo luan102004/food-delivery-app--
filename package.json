@@ -11,6 +11,7 @@
     "test:db": "tsx scripts/test-mongodb.ts"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.0.2",
     "@react-google-maps/api": "^2.20.7",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.12",
@@ -30,6 +31,7 @@
     "typescript": "^5.5.4"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5"
   }
