@@ -80,6 +80,11 @@ export const createDriverIcon = (
   };
 };
 
+// src/utils/mapHelpers.ts - ADD THESE FUNCTIONS
+
+/**
+ * Smooth animation for marker movement
+ */
 export const animateMarker = (
   marker: google.maps.Marker,
   newPosition: google.maps.LatLngLiteral,
@@ -117,6 +122,9 @@ export const animateMarker = (
   animate();
 };
 
+/**
+ * Calculate heading between two points
+ */
 export const calculateHeading = (
   from: Coordinates,
   to: Coordinates
@@ -129,4 +137,78 @@ export const calculateHeading = (
   
   const heading = Math.atan2(y, x);
   return ((heading * 180) / Math.PI + 360) % 360;
+};
+
+/**
+ * Create custom marker icon
+ */
+export const createCustomIcon = (
+  type: 'restaurant' | 'driver' | 'customer' | 'user',
+  options?: {
+    color?: string;
+    scale?: number;
+    rotation?: number;
+  }
+): google.maps.Symbol => {
+  const colors = {
+    restaurant: '#3b82f6',
+    driver: '#22c55e',
+    customer: '#f97316',
+    user: '#f97316',
+  };
+
+  const color = options?.color || colors[type];
+  const scale = options?.scale || 10;
+  const rotation = options?.rotation || 0;
+
+  if (type === 'driver') {
+    return {
+      path: 'M 0,-2 L 1,2 L 0,1.5 L -1,2 Z',
+      fillColor: color,
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+      scale,
+      rotation,
+      anchor: new google.maps.Point(0, 0),
+    };
+  }
+
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    fillColor: color,
+    fillOpacity: 1,
+    strokeColor: '#ffffff',
+    strokeWeight: 3,
+    scale,
+  };
+};
+
+/**
+ * Check if point is within radius
+ */
+export const isWithinRadius = (
+  point1: Coordinates,
+  point2: Coordinates,
+  radiusInMeters: number
+): boolean => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = toRad(point2.lat - point1.lat);
+  const dLon = toRad(point2.lng - point1.lng);
+  
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(point1.lat)) *
+      Math.cos(toRad(point2.lat)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance <= radiusInMeters;
+};
+
+const toRad = (degrees: number): number => {
+  return degrees * (Math.PI / 180);
 };

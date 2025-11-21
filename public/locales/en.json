@@ -106,5 +106,17 @@
     "codeApplied": "Code applied successfully",
     "invalidCode": "Invalid or expired code",
     "minOrder": "Minimum order"
+  },
+   "map": {
+    "title": "Map View",
+    "nearby": "Nearby Restaurants",
+    "yourLocation": "Your Location",
+    "pickLocation": "Pick Location",
+    "searchLocation": "Search for a location...",
+    "currentLocation": "Use Current Location",
+    "confirmLocation": "Confirm Location",
+    "directions": "Get Directions",
+    "distanceAway": "away",
+    "legend": "Legend"
   }
 }

@@ -1,9 +1,11 @@
+// src/app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { RealtimeProvider } from '@/contexts/RealtimeContext'; // ← ADD THIS
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
@@ -25,11 +27,13 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             <CartProvider>
-              <div className="min-h-screen flex flex-col">
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
+              <RealtimeProvider> {/* ← ADD THIS */}
+                <div className="min-h-screen flex flex-col">
+                  <Navbar />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </div>
+              </RealtimeProvider> {/* ← ADD THIS */}
             </CartProvider>
           </LanguageProvider>
         </AuthProvider>

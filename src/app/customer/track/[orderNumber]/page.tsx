@@ -1,10 +1,12 @@
+// src/app/customer/track/[orderNumber]/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useRealtime } from '@/contexts/RealtimeContext';
 import Card from '@/components/shared/Card';
-import TrackingMap from '@/components/customer/TrackingMap';
+import LiveTrackingMap from '@/components/maps/LiveTrackingMap';
 import {
   Package,
   CheckCircle2,
@@ -21,14 +23,60 @@ export default function TrackOrderPage() {
   const params = useParams();
   const { t } = useLanguage();
   const orderNumber = params.orderNumber as string;
+  
+  const { orderUpdates, subscribeToOrder, unsubscribeFromOrder } = useRealtime();
 
-  // Mock order status - in production, this would come from real-time updates
-  const [currentStatus, setCurrentStatus] = useState<OrderStatus>('confirmed');
+  const [orderData, setOrderData] = useState<any>(null);
+  const [currentStatus, setCurrentStatus] = useState<OrderStatus>('pending');
+  const [loading, setLoading] = useState(true);
+
+  // Fetch initial order data
+  useEffect(() => {
+    async function fetchOrderData() {
+      try {
+        const response = await fetch(`/api/orders/track/${orderNumber}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setOrderData(result.data);
+          setCurrentStatus(result.data.order.status);
+        }
+      } catch (error) {
+        console.error('Failed to fetch order:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchOrderData();
+  }, [orderNumber]);
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    subscribeToOrder(orderNumber);
+    return () => unsubscribeFromOrder(orderNumber);
+  }, [orderNumber, subscribeToOrder, unsubscribeFromOrder]);
+
+  // Update status from realtime updates
+  useEffect(() => {
+    const latestUpdate = orderUpdates.find(u => u.orderNumber === orderNumber);
+    if (latestUpdate) {
+      setCurrentStatus(latestUpdate.status as OrderStatus);
+      
+      // Show notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Order Update', {
+          body: `Your order is now ${latestUpdate.status}`,
+          icon: '/icon.png',
+        });
+      }
+    }
+  }, [orderUpdates, orderNumber]);
 
   const orderStatuses: { status: OrderStatus; label: string; time?: string }[] = [
-    { status: 'pending', label: t('order.pending'), time: '14:30' },
-    { status: 'confirmed', label: t('order.confirmed'), time: '14:32' },
-    { status: 'preparing', label: t('order.preparing'), time: '14:35' },
+    { status: 'pending', label: t('order.pending'), time: orderData?.order?.createdAt },
+    { status: 'confirmed', label: t('order.confirmed') },
+    { status: 'preparing', label: t('order.preparing') },
     { status: 'ready', label: t('order.ready') },
     { status: 'picked_up', label: t('order.picked_up') },
     { status: 'on_the_way', label: t('order.on_the_way') },
@@ -37,40 +85,30 @@ export default function TrackOrderPage() {
 
   const currentIndex = orderStatuses.findIndex((s) => s.status === currentStatus);
 
-  // Simulate order progress
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStatus((prev) => {
-        const index = orderStatuses.findIndex((s) => s.status === prev);
-        if (index < orderStatuses.length - 1) {
-          return orderStatuses[index + 1].status;
-        }
-        return prev;
-      });
-    }, 5000);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
 
-    return () => clearInterval(interval);
-  }, []);
+  if (!orderData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">📦</div>
+          <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
+          <p className="text-gray-600">Order #{orderNumber} could not be found</p>
+        </div>
+      </div>
+    );
+  }
 
-  const orderDetails = {
-    restaurant: {
-      name: 'Pizza Palace',
-      phone: '+84 123 456 789',
-      address: '456 Restaurant Street, District 1',
-    },
-    driver: {
-      name: 'Nguyen Van A',
-      phone: '+84 987 654 321',
-      rating: 4.9,
-      vehicle: 'Honda Wave - 59A1-12345',
-    },
-    items: [
-      { name: 'Margherita Pizza', quantity: 2, price: 12.99 },
-      { name: 'Garlic Bread', quantity: 1, price: 4.99 },
-    ],
-    total: 37.44,
-    estimatedTime: '20-30 minutes',
-  };
+  const { order, restaurant, driverLocation } = orderData;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -81,24 +119,43 @@ export default function TrackOrderPage() {
             {t('customer.trackOrder')} #{orderNumber}
           </h1>
           <p className="text-gray-600">
-            Estimated delivery: {orderDetails.estimatedTime}
+            Estimated delivery: {order.estimatedDeliveryTime || '20-30 minutes'}
           </p>
+          
+          {/* Realtime Status Badge */}
+          <div className="mt-3 flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-sm font-semibold text-green-600">Live Tracking Active</span>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Map */}
+            {/* Live Map */}
             <Card>
               <div className="p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <MapPin className="w-6 h-6 text-primary-600" />
                   Live Tracking
                 </h2>
-                <TrackingMap
-                  restaurantLocation={{ lat: 10.7769, lng: 106.7009 }}
-                  driverLocation={{ lat: 10.7789, lng: 106.7029 }}
-                  deliveryLocation={{ lat: 10.7809, lng: 106.7049 }}
+                <LiveTrackingMap
+                  orderNumber={orderNumber}
+                  restaurantLocation={{
+                    lat: restaurant.address.coordinates.lat,
+                    lng: restaurant.address.coordinates.lng,
+                    name: restaurant.name,
+                    address: restaurant.address.street,
+                  }}
+                  deliveryLocation={{
+                    lat: order.deliveryAddress.coordinates?.lat || 10.7809,
+                    lng: order.deliveryAddress.coordinates?.lng || 106.7049,
+                    address: `${order.deliveryAddress.street}, ${order.deliveryAddress.city}`,
+                  }}
+                  initialDriverLocation={driverLocation?.coordinates}
+                  onArrival={() => {
+                    console.log('Driver arrived!');
+                  }}
                 />
               </div>
             </Card>
@@ -116,7 +173,7 @@ export default function TrackOrderPage() {
                       <div key={status.status} className="flex gap-4">
                         <div className="flex flex-col items-center">
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                               isCompleted
                                 ? 'bg-primary-600 text-white'
                                 : 'bg-gray-200 text-gray-400'
@@ -146,10 +203,13 @@ export default function TrackOrderPage() {
                             {status.label}
                           </div>
                           {status.time && (
-                            <div className="text-sm text-gray-500">{status.time}</div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(status.time).toLocaleTimeString()}
+                            </div>
                           )}
                           {isCurrent && (
-                            <div className="text-sm text-primary-600 font-medium mt-1">
+                            <div className="text-sm text-primary-600 font-medium mt-1 flex items-center gap-2">
+                              <div className="w-2 h-2 bg-primary-600 rounded-full animate-pulse" />
                               In Progress...
                             </div>
                           )}
@@ -165,7 +225,7 @@ export default function TrackOrderPage() {
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             {/* Driver Info */}
-            {currentStatus !== 'pending' && currentStatus !== 'confirmed' && (
+            {order.driverId && (
               <Card>
                 <div className="p-6">
                   <h3 className="font-bold mb-4 flex items-center gap-2">
@@ -174,20 +234,18 @@ export default function TrackOrderPage() {
                   </h3>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                      {orderDetails.driver.name.charAt(0)}
+                      D
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-lg">
-                        {orderDetails.driver.name}
+                        Driver Name
                       </div>
                       <div className="text-sm text-gray-600">
-                        {orderDetails.driver.vehicle}
+                        Vehicle Info
                       </div>
                       <div className="flex items-center gap-1 text-sm">
                         <span className="text-yellow-500">★</span>
-                        <span className="font-semibold">
-                          {orderDetails.driver.rating}
-                        </span>
+                        <span className="font-semibold">4.9</span>
                       </div>
                     </div>
                   </div>
@@ -215,14 +273,14 @@ export default function TrackOrderPage() {
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <div className="font-semibold">{orderDetails.restaurant.name}</div>
+                    <div className="font-semibold">{restaurant.name}</div>
                     <div className="text-sm text-gray-600">
-                      {orderDetails.restaurant.address}
+                      {restaurant.address.street}
                     </div>
                   </div>
                   <button className="flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold text-sm">
                     <Phone className="w-4 h-4" />
-                    {orderDetails.restaurant.phone}
+                    {restaurant.phone}
                   </button>
                 </div>
               </div>
@@ -236,7 +294,7 @@ export default function TrackOrderPage() {
                   Order Items
                 </h3>
                 <div className="space-y-3 mb-4">
-                  {orderDetails.items.map((item, index) => (
+                  {order.items.map((item: any, index: number) => (
                     <div
                       key={index}
                       className="flex items-center justify-between text-sm"
@@ -255,7 +313,7 @@ export default function TrackOrderPage() {
                   <div className="flex justify-between font-bold text-lg">
                     <span>{t('order.total')}</span>
                     <span className="text-primary-600">
-                      ${orderDetails.total.toFixed(2)}
+                      ${order.total.toFixed(2)}
                     </span>
                   </div>
                 </div>

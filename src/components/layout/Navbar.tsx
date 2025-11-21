@@ -7,7 +7,15 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useCart } from '@/hooks/useCart';
 import { useSession, signOut } from 'next-auth/react';
 import LanguageSwitcher from '../shared/LanguageSwitcher';
-import { ShoppingCart, User, Menu as MenuIcon, Home, Package, BarChart3, LogOut } from 'lucide-react';
+import {
+  ShoppingCart,
+  Menu as MenuIcon,
+  Home,
+  Package,
+  BarChart3,
+  LogOut,
+  MapPin
+} from 'lucide-react';
 
 export default function Navbar() {
   const { t } = useLanguage();
@@ -19,6 +27,7 @@ export default function Navbar() {
   const navLinks = [
     { href: '/', label: t('nav.home'), icon: Home },
     { href: '/customer/menu', label: t('nav.menu'), icon: Package },
+    { href: '/customer/restaurants-map', label: 'Map View', icon: MapPin },
     { href: '/customer/orders', label: t('nav.orders'), icon: BarChart3 },
   ];
 
@@ -26,6 +35,7 @@ export default function Navbar() {
     <nav className="bg-white shadow-lg sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
@@ -57,7 +67,7 @@ export default function Navbar() {
           {/* Right Section */}
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
-            
+
             <Link
               href="/customer/cart"
               className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -76,6 +86,7 @@ export default function Navbar() {
                   <div className="font-semibold">{session.user?.name}</div>
                   <div className="text-gray-500 text-xs capitalize">{session.user?.role}</div>
                 </div>
+
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
                   className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"

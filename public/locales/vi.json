@@ -106,5 +106,17 @@
     "codeApplied": "Mã đã được áp dụng",
     "invalidCode": "Mã không hợp lệ hoặc đã hết hạn",
     "minOrder": "Đơn tối thiểu"
+  },
+   "map": {
+    "title": "Xem bản đồ",
+    "nearby": "Nhà hàng gần bạn",
+    "yourLocation": "Vị trí của bạn",
+    "pickLocation": "Chọn vị trí",
+    "searchLocation": "Tìm kiếm địa điểm...",
+    "currentLocation": "Dùng vị trí hiện tại",
+    "confirmLocation": "Xác nhận vị trí",
+    "directions": "Chỉ đường",
+    "distanceAway": "cách đây",
+    "legend": "Chú thích"
   }
 }
