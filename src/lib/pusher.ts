@@ -1,23 +1,25 @@
-// src/lib/pusher.ts - FIXED VERSION
+// ============================================
+// 🔧 FILE 2: src/lib/pusher.ts
+// ============================================
+// FIXED: Proper error handling and logging
+
 import Pusher from 'pusher';
 import PusherClient from 'pusher-js';
 
-// ============ CHECK ENV VARIABLES ============
+// Check ENV variables
 const requiredEnvVars = [
   'PUSHER_APP_ID',
   'PUSHER_APP_KEY',
   'PUSHER_APP_SECRET',
   'PUSHER_APP_CLUSTER',
-  'NEXT_PUBLIC_PUSHER_APP_KEY',
-  'NEXT_PUBLIC_PUSHER_APP_CLUSTER',
 ];
 
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 if (missingVars.length > 0) {
-  console.error('❌ Missing Pusher environment variables:', missingVars.join(', '));
+  console.error('❌ Missing Pusher variables:', missingVars.join(', '));
 }
 
-// ============ SERVER SIDE PUSHER ============
+// Server-side Pusher
 export const pusherServer = new Pusher({
   appId: process.env.PUSHER_APP_ID || '',
   key: process.env.PUSHER_APP_KEY || '',
@@ -26,7 +28,7 @@ export const pusherServer = new Pusher({
   useTLS: true,
 });
 
-// ============ CLIENT SIDE PUSHER ============
+// Client-side Pusher
 let pusherClientInstance: PusherClient | null = null;
 
 export const getPusherClient = (): PusherClient => {
@@ -40,19 +42,7 @@ export const getPusherClient = (): PusherClient => {
 
     if (!key || !cluster) {
       console.error('❌ Pusher client configuration missing');
-      // Return mock instance to prevent crashes
-      pusherClientInstance = {
-        connection: {
-          bind: () => {},
-          unbind_all: () => {},
-        },
-        subscribe: () => ({
-          bind: () => {},
-          unbind_all: () => {},
-        }),
-        unsubscribe: () => {},
-      } as any;
-      return pusherClientInstance;
+      throw new Error('Pusher configuration missing');
     }
 
     pusherClientInstance = new PusherClient(key, {
@@ -65,40 +55,51 @@ export const getPusherClient = (): PusherClient => {
   return pusherClientInstance;
 };
 
-// ============ PUSHER EVENTS ============
+// Events
 export const PUSHER_EVENTS = {
   ORDER_CREATED: 'order:created',
   ORDER_UPDATED: 'order:updated',
   ORDER_STATUS_CHANGED: 'order:status-changed',
   DRIVER_LOCATION_UPDATED: 'driver:location-updated',
-  DRIVER_STATUS_CHANGED: 'driver:status-changed',
   DRIVER_ASSIGNED: 'driver:assigned',
   NOTIFICATION_NEW: 'notification:new',
   RESTAURANT_NEW_ORDER: 'restaurant:new-order',
 } as const;
 
-// ============ PUSHER CHANNELS ============
+// Channels
 export const getPusherChannels = {
   customerOrder: (customerId: string) => `private-customer-${customerId}`,
   restaurantOrders: (restaurantId: string) => `private-restaurant-${restaurantId}`,
   driverChannel: (driverId: string) => `private-driver-${driverId}`,
   orderTracking: (orderNumber: string) => `presence-order-${orderNumber}`,
-  publicUpdates: () => 'public-updates',
 };
 
-// ============ HELPER FUNCTIONS ============
-
-// Safe trigger function with error handling
-async function safeTrigger(channel: string, event: string, data: any) {
-  try {
-    await pusherServer.trigger(channel, event, data);
-    return true;
-  } catch (error) {
-    console.error(`Failed to trigger Pusher event ${event} on ${channel}:`, error);
-    return false;
+// Safe trigger with retry
+async function safeTrigger(
+  channel: string,
+  event: string,
+  data: any,
+  retries = 3
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await pusherServer.trigger(channel, event, data);
+      console.log(`✅ Pusher [${channel}] → ${event}`);
+      return true;
+    } catch (error: any) {
+      console.error(`❌ Pusher attempt ${attempt}/${retries} failed:`, error.message);
+      if (attempt === retries) {
+        console.error(`❌ Pusher FAILED after ${retries} attempts on ${channel}`);
+        return false;
+      }
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
   }
+  return false;
 }
 
+// Trigger order status update to ALL parties
 export async function triggerOrderStatusUpdate(
   orderId: string,
   orderNumber: string,
@@ -114,14 +115,60 @@ export async function triggerOrderStatusUpdate(
     timestamp: new Date().toISOString(),
   };
 
+  console.log(`📤 Broadcasting order update: ${orderNumber} → ${status}`);
+
+  // Trigger to all relevant channels simultaneously
   await Promise.allSettled([
-    safeTrigger(getPusherChannels.customerOrder(customerId), PUSHER_EVENTS.ORDER_STATUS_CHANGED, data),
-    safeTrigger(getPusherChannels.restaurantOrders(restaurantId), PUSHER_EVENTS.ORDER_UPDATED, data),
-    driverId && safeTrigger(getPusherChannels.driverChannel(driverId), PUSHER_EVENTS.ORDER_STATUS_CHANGED, data),
-    safeTrigger(getPusherChannels.orderTracking(orderNumber), PUSHER_EVENTS.ORDER_STATUS_CHANGED, data),
+    // Customer channel
+    safeTrigger(
+      getPusherChannels.customerOrder(customerId),
+      PUSHER_EVENTS.ORDER_STATUS_CHANGED,
+      data
+    ),
+    
+    // Restaurant channel
+    safeTrigger(
+      getPusherChannels.restaurantOrders(restaurantId),
+      PUSHER_EVENTS.ORDER_UPDATED,
+      data
+    ),
+    
+    // Driver channel (if assigned)
+    driverId && safeTrigger(
+      getPusherChannels.driverChannel(driverId),
+      PUSHER_EVENTS.ORDER_STATUS_CHANGED,
+      data
+    ),
+    
+    // Order tracking channel (for live tracking)
+    safeTrigger(
+      getPusherChannels.orderTracking(orderNumber),
+      PUSHER_EVENTS.ORDER_STATUS_CHANGED,
+      data
+    ),
   ]);
+
+  console.log(`✅ Broadcast complete for ${orderNumber}`);
 }
 
+// Trigger new order notification to restaurant
+export async function triggerNewOrderNotification(
+  restaurantId: string,
+  orderData: any
+) {
+  console.log(`📤 New order notification → Restaurant ${restaurantId}`);
+  
+  await safeTrigger(
+    getPusherChannels.restaurantOrders(restaurantId),
+    PUSHER_EVENTS.RESTAURANT_NEW_ORDER,
+    {
+      order: orderData,
+      timestamp: new Date().toISOString(),
+    }
+  );
+}
+
+// Trigger driver location update
 export async function triggerDriverLocationUpdate(
   driverId: string,
   orderNumber: string,
@@ -145,20 +192,7 @@ export async function triggerDriverLocationUpdate(
   );
 }
 
-export async function triggerNewOrderNotification(
-  restaurantId: string,
-  orderData: any
-) {
-  await safeTrigger(
-    getPusherChannels.restaurantOrders(restaurantId),
-    PUSHER_EVENTS.RESTAURANT_NEW_ORDER,
-    {
-      order: orderData,
-      timestamp: new Date().toISOString(),
-    }
-  );
-}
-
+// Trigger driver assignment
 export async function triggerDriverAssignment(
   customerId: string,
   orderNumber: string,
@@ -176,27 +210,15 @@ export async function triggerDriverAssignment(
   };
 
   await Promise.allSettled([
-    safeTrigger(getPusherChannels.customerOrder(customerId), PUSHER_EVENTS.DRIVER_ASSIGNED, data),
-    safeTrigger(getPusherChannels.orderTracking(orderNumber), PUSHER_EVENTS.DRIVER_ASSIGNED, data),
+    safeTrigger(
+      getPusherChannels.customerOrder(customerId),
+      PUSHER_EVENTS.DRIVER_ASSIGNED,
+      data
+    ),
+    safeTrigger(
+      getPusherChannels.orderTracking(orderNumber),
+      PUSHER_EVENTS.DRIVER_ASSIGNED,
+      data
+    ),
   ]);
-}
-
-export async function triggerNotification(
-  userId: string,
-  notification: {
-    id: string;
-    title: string;
-    message: string;
-    type: string;
-    data?: any;
-  }
-) {
-  await safeTrigger(
-    getPusherChannels.customerOrder(userId),
-    PUSHER_EVENTS.NOTIFICATION_NEW,
-    {
-      notification,
-      timestamp: new Date().toISOString(),
-    }
-  );
 }

@@ -1,4 +1,8 @@
-// src/contexts/RealtimeContext.tsx - FIXED
+// ============================================
+// 🔧 FILE 3: src/contexts/RealtimeContext.tsx
+// ============================================
+// FIXED: Better connection handling and state management
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -59,11 +63,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER;
 
     if (!PUSHER_KEY || !PUSHER_CLUSTER) {
-      console.warn('⚠️ Pusher credentials missing');
+      console.warn('⚠️ Pusher credentials missing - Real-time disabled');
+      setIsConnected(false);
       return;
     }
 
     try {
+      console.log('🔌 Initializing Pusher...');
       const client = new Pusher(PUSHER_KEY, {
         cluster: PUSHER_CLUSTER,
         enabledTransports: ['ws', 'wss'],
@@ -82,16 +88,20 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
       client.connection.bind('error', (error: any) => {
         console.error('❌ Pusher error:', error);
+        setIsConnected(false);
       });
 
       setPusherClient(client);
 
       return () => {
+        console.log('🔌 Disconnecting Pusher...');
         client.connection.unbind_all();
         client.disconnect();
+        setPusherClient(null);
       };
     } catch (error) {
       console.error('Failed to initialize Pusher:', error);
+      setIsConnected(false);
     }
   }, []);
 
@@ -114,11 +124,29 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     if (!channelName) return;
 
+    console.log(`📡 Subscribing to ${channelName}`);
     const channel = pusherClient.subscribe(channelName);
 
     channel.bind('order:status-changed', (data: OrderUpdate) => {
-      console.log('📦 Order update:', data);
+      console.log('📦 Order status changed:', data);
       setOrderUpdates(prev => [data, ...prev].slice(0, 20));
+    });
+
+    channel.bind('order:updated', (data: OrderUpdate) => {
+      console.log('📦 Order updated:', data);
+      setOrderUpdates(prev => [data, ...prev].slice(0, 20));
+    });
+
+    channel.bind('restaurant:new-order', (data: any) => {
+      console.log('🆕 New order received:', data);
+      setNotifications(prev => [{
+        id: Math.random().toString(),
+        title: 'New Order!',
+        message: `Order #${data.order.orderNumber} received`,
+        type: 'new_order',
+        data: data.order,
+        timestamp: new Date().toISOString(),
+      }, ...prev]);
     });
 
     channel.bind('notification:new', (data: any) => {
@@ -127,6 +155,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      console.log(`📡 Unsubscribing from ${channelName}`);
       channel.unbind_all();
       pusherClient.unsubscribe(channelName);
     };
@@ -141,13 +170,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    console.log(`📡 Subscribing to order ${orderNumber}`);
     const channel = pusherClient.subscribe(channelName);
 
     channel.bind('order:status-changed', (data: OrderUpdate) => {
+      console.log(`📦 Order ${orderNumber} status:`, data);
       setOrderUpdates(prev => [data, ...prev].slice(0, 20));
     });
 
     channel.bind('driver:location-updated', (data: any) => {
+      console.log(`🚗 Driver location for ${orderNumber}:`, data);
       setDriverLocation(data.location);
     });
 
@@ -161,6 +193,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const channel = subscribedChannels.get(channelName);
 
     if (channel) {
+      console.log(`📡 Unsubscribing from order ${orderNumber}`);
       channel.unbind_all();
       pusherClient.unsubscribe(channelName);
       subscribedChannels.delete(channelName);

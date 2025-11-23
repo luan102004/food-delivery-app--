@@ -1,11 +1,16 @@
-// src/app/api/orders/route.ts - FIXED VERSION
+
+// ============================================
+// 🔧 FILE 1: src/app/api/orders/route.ts
+// ============================================
+// FIXED: Trigger Pusher events khi tạo/update order
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import OrderModel from '@/models/Order';
+import { triggerOrderStatusUpdate, triggerNewOrderNotification } from '@/lib/pusher';
 
-// Helper function to get authenticated user
 async function getAuthUser(request: NextRequest) {
   const session = await getServerSession(authOptions);
   
@@ -94,6 +99,27 @@ export async function POST(request: NextRequest) {
 
     const order = await OrderModel.create(orderData);
 
+    // ✅ TRIGGER PUSHER: Notify restaurant about new order
+    await triggerNewOrderNotification(order.restaurantId, {
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      customerId: order.customerId,
+      items: order.items,
+      total: order.total,
+      createdAt: order.createdAt,
+    });
+
+    // ✅ TRIGGER PUSHER: Notify customer that order was created
+    await triggerOrderStatusUpdate(
+      order._id.toString(),
+      order.orderNumber,
+      'pending',
+      order.customerId,
+      order.restaurantId
+    );
+
+    console.log('✅ Order created and notifications sent:', order.orderNumber);
+
     return NextResponse.json(
       { success: true, data: order },
       { status: 201 }
@@ -125,6 +151,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Get current order before update
+    const currentOrder = await OrderModel.findById(_id);
+    if (!currentOrder) {
+      return NextResponse.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
     const updateData: any = {};
     if (status) updateData.status = status;
     if (driverId) updateData.driverId = driverId;
@@ -140,6 +175,18 @@ export async function PUT(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // ✅ TRIGGER PUSHER: Notify all parties about status change
+    await triggerOrderStatusUpdate(
+      order._id.toString(),
+      order.orderNumber,
+      order.status,
+      order.customerId,
+      order.restaurantId,
+      order.driverId
+    );
+
+    console.log('✅ Order updated and notifications sent:', order.orderNumber, '→', order.status);
 
     return NextResponse.json({ success: true, data: order });
   } catch (error: any) {
