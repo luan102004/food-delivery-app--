@@ -1,321 +1,288 @@
-import mongoose from 'mongoose';
-import connectDB from '../src/lib/mongodb';
+// scripts/seed-restaurant-owner.js
+// Script tạo tài khoản Restaurant Owner với đầy đủ thông tin
 
-// Import models
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import connectDB from '../src/lib/mongodb.js';
+
 const UserModel = require('../src/models/User').default;
 const RestaurantModel = require('../src/models/Restaurant').default;
 const MenuItemModel = require('../src/models/MenuItem').default;
-const OrderModel = require('../src/models/Order').default;
-const PromotionModel = require('../src/models/Promotion').default;
 
-async function seed() {
+async function seedRestaurantOwner() {
   try {
-    console.log('🌱 Starting seed...');
+    console.log('╔════════════════════════════════════════╗');
+    console.log('║  🏪 Restaurant Owner Setup            ║');
+    console.log('╚════════════════════════════════════════╝\n');
+
     await connectDB();
 
-    // Clear existing data
-    console.log('🗑️  Clearing existing data...');
-    await Promise.all([
-      UserModel.deleteMany({}),
-      RestaurantModel.deleteMany({}),
-      MenuItemModel.deleteMany({}),
-      OrderModel.deleteMany({}),
-      PromotionModel.deleteMany({}),
-    ]);
-
-    // Create Users
-    console.log('👥 Creating users...');
-    const users = await UserModel.insertMany([
-      {
-        email: 'customer@test.com',
-        name: 'John Doe',
-        phone: '+84 123 456 789',
-        role: 'customer',
-        address: {
-          street: '123 Main St',
-          city: 'Ho Chi Minh City',
-          state: 'Vietnam',
-          zipCode: '70000',
-          coordinates: { lat: 10.7769, lng: 106.7009 },
-        },
-      },
-      {
-        email: 'restaurant@test.com',
-        name: 'Restaurant Owner',
-        phone: '+84 987 654 321',
+    // ============================================
+    // 1️⃣ TẠO RESTAURANT OWNER
+    // ============================================
+    console.log('👤 Creating restaurant owner account...');
+    
+    const ownerEmail = 'owner@pizzapalace.com';
+    
+    // Kiểm tra xem đã tồn tại chưa
+    let owner = await UserModel.findOne({ email: ownerEmail });
+    
+    if (owner) {
+      console.log('   ⚠️  Owner already exists, using existing account');
+    } else {
+      const hashedPassword = await bcrypt.hash('123456', 10);
+      
+      owner = await UserModel.create({
+        email: ownerEmail,
+        name: 'Trần Minh Tuấn',
+        phone: '+84 909 123 456',
         role: 'restaurant',
-      },
-      {
-        email: 'driver@test.com',
-        name: 'Driver Mike',
-        phone: '+84 555 555 555',
-        role: 'driver',
-      },
-    ]);
-
-    console.log(`✅ Created ${users.length} users`);
-
-    // Create Restaurants
-    console.log('🏪 Creating restaurants...');
-    const restaurants = await RestaurantModel.insertMany([
-      {
-        name: 'Pizza Palace',
-        description: 'Authentic Italian pizza and pasta',
-        ownerId: users[1]._id,
+        passwordHash: hashedPassword,
         address: {
-          street: '456 Restaurant Ave',
-          city: 'Ho Chi Minh City',
-          state: 'Vietnam',
+          street: '456 Nguyễn Thị Minh Khai',
+          city: 'Hồ Chí Minh',
+          state: 'Việt Nam',
           zipCode: '70000',
           coordinates: { lat: 10.7789, lng: 106.7029 },
         },
-        phone: '+84 111 222 333',
-        email: 'pizza@palace.com',
-        image: '🍕',
-        rating: 4.8,
-        cuisine: ['Italian', 'Pizza'],
-        openingHours: {
-          monday: { open: '10:00', close: '22:00', isClosed: false },
-          tuesday: { open: '10:00', close: '22:00', isClosed: false },
-          wednesday: { open: '10:00', close: '22:00', isClosed: false },
-          thursday: { open: '10:00', close: '22:00', isClosed: false },
-          friday: { open: '10:00', close: '23:00', isClosed: false },
-          saturday: { open: '10:00', close: '23:00', isClosed: false },
-          sunday: { open: '11:00', close: '21:00', isClosed: false },
-        },
-        isOpen: true,
-      },
-      {
-        name: 'Burger House',
-        description: 'Best burgers in town',
-        ownerId: users[1]._id,
-        address: {
-          street: '789 Food Street',
-          city: 'Ho Chi Minh City',
-          state: 'Vietnam',
-          zipCode: '70000',
-          coordinates: { lat: 10.7809, lng: 106.7049 },
-        },
-        phone: '+84 444 555 666',
-        email: 'info@burgerhouse.com',
-        image: '🍔',
-        rating: 4.6,
-        cuisine: ['American', 'Burgers'],
-        openingHours: {
-          monday: { open: '11:00', close: '22:00', isClosed: false },
-          tuesday: { open: '11:00', close: '22:00', isClosed: false },
-          wednesday: { open: '11:00', close: '22:00', isClosed: false },
-          thursday: { open: '11:00', close: '22:00', isClosed: false },
-          friday: { open: '11:00', close: '23:00', isClosed: false },
-          saturday: { open: '11:00', close: '23:00', isClosed: false },
-          sunday: { open: '11:00', close: '22:00', isClosed: false },
-        },
-        isOpen: true,
-      },
-      {
-        name: 'Sushi Master',
-        description: 'Fresh sushi and Japanese cuisine',
-        ownerId: users[1]._id,
-        address: {
-          street: '321 Sushi Lane',
-          city: 'Ho Chi Minh City',
-          state: 'Vietnam',
-          zipCode: '70000',
-          coordinates: { lat: 10.7829, lng: 106.7069 },
-        },
-        phone: '+84 777 888 999',
-        email: 'contact@sushimaster.com',
-        image: '🍣',
-        rating: 4.9,
-        cuisine: ['Japanese', 'Sushi'],
-        openingHours: {
-          monday: { open: '12:00', close: '22:00', isClosed: false },
-          tuesday: { open: '12:00', close: '22:00', isClosed: false },
-          wednesday: { open: '12:00', close: '22:00', isClosed: false },
-          thursday: { open: '12:00', close: '22:00', isClosed: false },
-          friday: { open: '12:00', close: '23:00', isClosed: false },
-          saturday: { open: '12:00', close: '23:00', isClosed: false },
-          sunday: { open: '12:00', close: '22:00', isClosed: false },
-        },
-        isOpen: true,
-      },
-    ]);
+      });
+      
+      console.log('   ✓ Owner created:', owner.name);
+    }
 
-    console.log(`✅ Created ${restaurants.length} restaurants`);
+    // ============================================
+    // 2️⃣ TẠO RESTAURANT (liên kết với owner)
+    // ============================================
+    console.log('\n🏪 Creating restaurant...');
+    
+    // Xóa restaurant cũ nếu có
+    await RestaurantModel.deleteMany({ ownerId: owner._id });
+    
+    const restaurant = await RestaurantModel.create({
+      name: 'Pizza Palace Premium',
+      description: 'Authentic Italian pizza made with love and tradition. Fresh ingredients imported directly from Italy.',
+      ownerId: owner._id, // ← QUAN TRỌNG: Liên kết với owner
+      address: {
+        street: '123 Nguyễn Huệ, Quận 1',
+        city: 'Hồ Chí Minh',
+        state: 'Việt Nam',
+        zipCode: '700000',
+        coordinates: { 
+          lat: 10.7769, 
+          lng: 106.7009 
+        }, // ← Địa chỉ cho map view
+      },
+      phone: '+84 28 3822 5678',
+      email: 'info@pizzapalace.com',
+      image: '🍕',
+      rating: 4.8,
+      cuisine: ['Italian', 'Pizza', 'Pasta'],
+      openingHours: {
+        monday: { open: '10:00', close: '22:00', isClosed: false },
+        tuesday: { open: '10:00', close: '22:00', isClosed: false },
+        wednesday: { open: '10:00', close: '22:00', isClosed: false },
+        thursday: { open: '10:00', close: '22:00', isClosed: false },
+        friday: { open: '10:00', close: '23:00', isClosed: false },
+        saturday: { open: '10:00', close: '23:00', isClosed: false },
+        sunday: { open: '11:00', close: '21:00', isClosed: false },
+      },
+      isOpen: true,
+    });
+    
+    console.log('   ✓ Restaurant created:', restaurant.name);
+    console.log('   ✓ Location:', `${restaurant.address.coordinates.lat}, ${restaurant.address.coordinates.lng}`);
 
-    // Create Menu Items
-    console.log('🍽️  Creating menu items...');
-    const menuItems = await MenuItemModel.insertMany([
-      // Pizza Palace Menu
+    // ============================================
+    // 3️⃣ TẠO MENU ITEMS
+    // ============================================
+    console.log('\n🍽️  Creating menu items...');
+    
+    const menuItemsData = [
+      // Pizza
       {
-        restaurantId: restaurants[0]._id,
         name: 'Margherita Pizza',
-        description: 'Classic tomato sauce, mozzarella, and fresh basil',
+        description: 'Classic Italian pizza with fresh tomato sauce, mozzarella di bufala, fresh basil, and extra virgin olive oil',
         price: 12.99,
         image: '🍕',
         category: 'Pizza',
         isAvailable: true,
         preparationTime: 20,
-        tags: ['vegetarian', 'popular'],
+        tags: ['vegetarian', 'popular', 'classic'],
       },
       {
-        restaurantId: restaurants[0]._id,
         name: 'Pepperoni Pizza',
-        description: 'Tomato sauce, mozzarella, and spicy pepperoni',
+        description: 'Tomato sauce, mozzarella, and premium spicy pepperoni slices',
         price: 14.99,
         image: '🍕',
         category: 'Pizza',
         isAvailable: true,
         preparationTime: 20,
-        tags: ['popular', 'spicy'],
+        tags: ['popular', 'spicy', 'meat'],
       },
       {
-        restaurantId: restaurants[0]._id,
+        name: 'Quattro Formaggi',
+        description: 'Four cheese pizza: mozzarella, gorgonzola, parmesan, and ricotta',
+        price: 16.99,
+        image: '🍕',
+        category: 'Pizza',
+        isAvailable: true,
+        preparationTime: 22,
+        tags: ['vegetarian', 'premium', 'cheese-lover'],
+      },
+      {
+        name: 'Diavola Pizza',
+        description: 'Spicy salami, mozzarella, hot peppers, and chili oil',
+        price: 15.99,
+        image: '🍕',
+        category: 'Pizza',
+        isAvailable: true,
+        preparationTime: 20,
+        tags: ['spicy', 'meat', 'hot'],
+      },
+      
+      // Pasta
+      {
+        name: 'Spaghetti Carbonara',
+        description: 'Creamy pasta with crispy bacon, parmesan, egg yolk, and black pepper',
+        price: 13.99,
+        image: '🍝',
+        category: 'Pasta',
+        isAvailable: true,
+        preparationTime: 18,
+        tags: ['popular', 'creamy', 'italian'],
+      },
+      {
+        name: 'Penne Arrabiata',
+        description: 'Spicy tomato sauce with garlic, chili peppers, and fresh parsley',
+        price: 11.99,
+        image: '🍝',
+        category: 'Pasta',
+        isAvailable: true,
+        preparationTime: 15,
+        tags: ['vegetarian', 'spicy', 'vegan-option'],
+      },
+      
+      // Sides
+      {
         name: 'Garlic Bread',
-        description: 'Toasted bread with garlic butter and herbs',
+        description: 'Toasted ciabatta with garlic butter, herbs, and melted cheese',
         price: 4.99,
         image: '🥖',
         category: 'Sides',
         isAvailable: true,
         preparationTime: 8,
-        tags: ['side'],
-      },
-      // Burger House Menu
-      {
-        restaurantId: restaurants[1]._id,
-        name: 'Classic Cheeseburger',
-        description: 'Beef patty, cheese, lettuce, tomato, pickles',
-        price: 11.99,
-        image: '🍔',
-        category: 'Burgers',
-        isAvailable: true,
-        preparationTime: 15,
-        tags: ['popular'],
+        tags: ['side', 'vegetarian'],
       },
       {
-        restaurantId: restaurants[1]._id,
-        name: 'Double Bacon Burger',
-        description: 'Two beef patties, bacon, cheese, special sauce',
-        price: 15.99,
-        image: '🍔',
-        category: 'Burgers',
-        isAvailable: true,
-        preparationTime: 18,
-        tags: ['popular', 'best-seller'],
-      },
-      {
-        restaurantId: restaurants[1]._id,
-        name: 'French Fries',
-        description: 'Crispy golden fries',
-        price: 3.99,
-        image: '🍟',
-        category: 'Sides',
+        name: 'Caesar Salad',
+        description: 'Romaine lettuce, croutons, parmesan, and Caesar dressing',
+        price: 8.99,
+        image: '🥗',
+        category: 'Salads',
         isAvailable: true,
         preparationTime: 10,
-        tags: ['side'],
+        tags: ['healthy', 'fresh', 'light'],
       },
-      // Sushi Master Menu
+      
+      // Desserts
       {
-        restaurantId: restaurants[2]._id,
-        name: 'Salmon Nigiri',
-        description: 'Fresh salmon on seasoned rice',
-        price: 8.99,
-        image: '🍣',
-        category: 'Sushi',
-        isAvailable: true,
-        preparationTime: 12,
-        tags: ['popular'],
-      },
-      {
-        restaurantId: restaurants[2]._id,
-        name: 'California Roll',
-        description: 'Crab, avocado, cucumber',
-        price: 12.99,
-        image: '🍣',
-        category: 'Sushi',
-        isAvailable: true,
-        preparationTime: 15,
-        tags: ['popular'],
-      },
-      {
-        restaurantId: restaurants[2]._id,
-        name: 'Miso Soup',
-        description: 'Traditional Japanese soup',
-        price: 3.99,
-        image: '🍜',
-        category: 'Soups',
+        name: 'Tiramisu',
+        description: 'Classic Italian dessert with coffee-soaked ladyfingers and mascarpone cream',
+        price: 6.99,
+        image: '🍰',
+        category: 'Desserts',
         isAvailable: true,
         preparationTime: 5,
-        tags: ['healthy'],
-      },
-    ]);
-
-    console.log(`✅ Created ${menuItems.length} menu items`);
-
-    // Create Promotions
-    console.log('🎫 Creating promotions...');
-    const promotions = await PromotionModel.insertMany([
-      {
-        code: 'SAVE30',
-        type: 'percentage',
-        value: 30,
-        description: 'Get 30% off on all orders',
-        minOrderAmount: 20,
-        maxDiscount: 15,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
-        isActive: true,
-        usageLimit: 1000,
-        usedCount: 0,
+        tags: ['dessert', 'sweet', 'coffee'],
       },
       {
-        code: 'FREESHIP',
-        type: 'free_delivery',
-        value: 0,
-        description: 'Free delivery on orders over $25',
-        minOrderAmount: 25,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
-        isActive: true,
-        usageLimit: 500,
-        usedCount: 0,
+        name: 'Panna Cotta',
+        description: 'Silky Italian cream dessert with berry compote',
+        price: 5.99,
+        image: '🍮',
+        category: 'Desserts',
+        isAvailable: true,
+        preparationTime: 5,
+        tags: ['dessert', 'sweet', 'creamy'],
+      },
+      
+      // Beverages
+      {
+        name: 'Italian Soda',
+        description: 'Sparkling water with flavored syrup',
+        price: 3.99,
+        image: '🥤',
+        category: 'Beverages',
+        isAvailable: true,
+        preparationTime: 3,
+        tags: ['drink', 'refreshing'],
       },
       {
-        code: 'FIRST10',
-        type: 'fixed',
-        value: 10,
-        description: '$10 off for first-time customers',
-        minOrderAmount: 30,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
-        isActive: true,
-        usageLimit: 200,
-        usedCount: 0,
+        name: 'Espresso',
+        description: 'Strong Italian coffee',
+        price: 2.99,
+        image: '☕',
+        category: 'Beverages',
+        isAvailable: true,
+        preparationTime: 3,
+        tags: ['drink', 'coffee'],
       },
-    ]);
+    ];
+    
+    // Xóa menu items cũ
+    await MenuItemModel.deleteMany({ restaurantId: restaurant._id });
+    
+    // Tạo menu items mới
+    const menuItems = [];
+    for (const itemData of menuItemsData) {
+      const item = await MenuItemModel.create({
+        ...itemData,
+        restaurantId: restaurant._id, // ← QUAN TRỌNG: Liên kết với restaurant
+      });
+      menuItems.push(item);
+      console.log(`   ✓ ${item.name} ($${item.price})`);
+    }
 
-    console.log(`✅ Created ${promotions.length} promotions`);
-
-    console.log('✅ Seed completed successfully!');
-    console.log('\n📋 Summary:');
-    console.log(`   Users: ${users.length}`);
-    console.log(`   Restaurants: ${restaurants.length}`);
+    // ============================================
+    // 📊 TỔNG KẾT
+    // ============================================
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log('║  ✅ Restaurant Owner Setup Complete!  ║');
+    console.log('╚════════════════════════════════════════╝\n');
+    
+    console.log('📋 Summary:');
+    console.log(`   Owner ID: ${owner._id}`);
+    console.log(`   Restaurant ID: ${restaurant._id}`);
     console.log(`   Menu Items: ${menuItems.length}`);
-    console.log(`   Promotions: ${promotions.length}`);
-    console.log('\n🔑 Test Accounts:');
-    console.log('   Customer: customer@test.com');
-    console.log('   Restaurant: restaurant@test.com');
-    console.log('   Driver: driver@test.com');
-    console.log('\n💡 Promo Codes:');
-    console.log('   SAVE30 - 30% off');
-    console.log('   FREESHIP - Free delivery');
-    console.log('   FIRST10 - $10 off');
+    
+    console.log('\n🔑 Login Information:');
+    console.log('┌─────────────────────────────────────────┐');
+    console.log('│  Email:    owner@pizzapalace.com        │');
+    console.log('│  Password: 123456                       │');
+    console.log('│  Role:     restaurant                   │');
+    console.log('└─────────────────────────────────────────┘');
+    
+    console.log('\n📍 Restaurant Location (for Map View):');
+    console.log(`   Latitude:  ${restaurant.address.coordinates.lat}`);
+    console.log(`   Longitude: ${restaurant.address.coordinates.lng}`);
+    console.log(`   Address:   ${restaurant.address.street}`);
+    
+    console.log('\n🚀 Next Steps:');
+    console.log('   1. Run: npm run dev');
+    console.log('   2. Visit: http://localhost:3000/auth/signin');
+    console.log('   3. Login with: owner@pizzapalace.com / 123456');
+    console.log('   4. You can now:');
+    console.log('      - Add/Edit/Delete menu items');
+    console.log('      - Manage orders');
+    console.log('      - View analytics');
+    console.log('      - Restaurant appears on Map View!\n');
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seed error:', error);
+    console.error('❌ Setup error:', error);
     process.exit(1);
   }
 }
 
-seed();
+// Chạy script
+seedRestaurantOwner();

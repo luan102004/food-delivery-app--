@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx scripts/seed.ts",
+    "seed": "node --loader tsx scripts/complete-seed.js",
+    "seed:clear": "node --loader tsx scripts/complete-seed.js",
     "test:db": "tsx scripts/test-mongodb.ts"
   },
   "dependencies": {
