@@ -1,9 +1,8 @@
-// src/contexts/RealtimeContext.tsx
+// src/contexts/RealtimeContext.tsx - FIXED VERSION
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { getPusherClient, getPusherChannels, PUSHER_EVENTS } from '@/lib/pusher';
 import type { Channel } from 'pusher-js';
 
 interface DriverLocation {
@@ -18,17 +17,6 @@ interface OrderUpdate {
   orderId: string;
   orderNumber: string;
   status: string;
-  timestamp: string;
-}
-
-interface DriverAssignment {
-  orderNumber: string;
-  driver: {
-    id: string;
-    name: string;
-    phone: string;
-    rating: number;
-  };
   timestamp: string;
 }
 
@@ -60,37 +48,49 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [orderUpdates, setOrderUpdates] = useState<OrderUpdate[]>([]);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  const [subscribedChannels, setSubscribedChannels] = useState<Map<string, Channel>>(new Map());
+  const [subscribedChannels] = useState<Map<string, Channel>>(new Map());
+  const [pusherClient, setPusherClient] = useState<any>(null);
 
-  const pusherClient = getPusherClient();
-
-  // Initialize connection
+  // Initialize Pusher Client (only on client side)
   useEffect(() => {
-    if (!session?.user) return;
+    if (typeof window === 'undefined') return;
 
-    pusherClient.connection.bind('connected', () => {
-      console.log('✅ Pusher connected');
-      setIsConnected(true);
-    });
+    // Dynamic import to avoid SSR issues
+    import('@/lib/pusher').then(({ getPusherClient, PUSHER_EVENTS, getPusherChannels }) => {
+      try {
+        const client = getPusherClient();
+        setPusherClient({ client, PUSHER_EVENTS, getPusherChannels });
 
-    pusherClient.connection.bind('disconnected', () => {
-      console.log('❌ Pusher disconnected');
-      setIsConnected(false);
-    });
+        client.connection.bind('connected', () => {
+          console.log('✅ Pusher connected');
+          setIsConnected(true);
+        });
 
-    pusherClient.connection.bind('error', (error: any) => {
-      console.error('❌ Pusher error:', error);
+        client.connection.bind('disconnected', () => {
+          console.log('❌ Pusher disconnected');
+          setIsConnected(false);
+        });
+
+        client.connection.bind('error', (error: any) => {
+          console.error('❌ Pusher error:', error);
+        });
+      } catch (error) {
+        console.error('Failed to initialize Pusher:', error);
+      }
     });
 
     return () => {
-      pusherClient.connection.unbind_all();
+      if (pusherClient?.client) {
+        pusherClient.client.connection.unbind_all();
+      }
     };
-  }, [session, pusherClient]);
+  }, []);
 
   // Subscribe to user's personal channel
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !pusherClient) return;
 
+    const { client, PUSHER_EVENTS, getPusherChannels } = pusherClient;
     const userId = session.user.id;
     const role = session.user.role as string;
 
@@ -106,15 +106,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     if (!channelName) return;
 
-    const channel = pusherClient.subscribe(channelName);
+    const channel = client.subscribe(channelName);
 
-    // Listen for order status changes
     channel.bind(PUSHER_EVENTS.ORDER_STATUS_CHANGED, (data: OrderUpdate) => {
       console.log('📦 Order status changed:', data);
       setOrderUpdates(prev => [data, ...prev].slice(0, 20));
     });
 
-    // Listen for new orders (restaurant)
     channel.bind(PUSHER_EVENTS.RESTAURANT_NEW_ORDER, (data: any) => {
       console.log('🆕 New order received:', data);
       setNotifications(prev => [
@@ -130,8 +128,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       ]);
     });
 
-    // Listen for driver assignments
-    channel.bind(PUSHER_EVENTS.DRIVER_ASSIGNED, (data: DriverAssignment) => {
+    channel.bind(PUSHER_EVENTS.DRIVER_ASSIGNED, (data: any) => {
       console.log('🚗 Driver assigned:', data);
       setNotifications(prev => [
         {
@@ -146,7 +143,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       ]);
     });
 
-    // Listen for notifications
     channel.bind(PUSHER_EVENTS.NOTIFICATION_NEW, (data: any) => {
       console.log('🔔 New notification:', data);
       setNotifications(prev => [data.notification, ...prev]);
@@ -154,12 +150,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       channel.unbind_all();
-      pusherClient.unsubscribe(channelName);
+      client.unsubscribe(channelName);
     };
   }, [session, pusherClient]);
 
-  // Subscribe to specific order tracking
   const subscribeToOrder = useCallback((orderNumber: string) => {
+    if (!pusherClient) return;
+
+    const { client, PUSHER_EVENTS, getPusherChannels } = pusherClient;
     const channelName = getPusherChannels.orderTracking(orderNumber);
     
     if (subscribedChannels.has(channelName)) {
@@ -167,54 +165,45 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const channel = pusherClient.subscribe(channelName);
+    const channel = client.subscribe(channelName);
 
-    // Listen for order status changes
     channel.bind(PUSHER_EVENTS.ORDER_STATUS_CHANGED, (data: OrderUpdate) => {
       console.log('📦 Order status update:', data);
       setOrderUpdates(prev => [data, ...prev].slice(0, 20));
     });
 
-    // Listen for driver location updates
     channel.bind(PUSHER_EVENTS.DRIVER_LOCATION_UPDATED, (data: any) => {
       console.log('📍 Driver location updated:', data);
       setDriverLocation(data.location);
     });
 
-    // Listen for driver assignment
-    channel.bind(PUSHER_EVENTS.DRIVER_ASSIGNED, (data: DriverAssignment) => {
+    channel.bind(PUSHER_EVENTS.DRIVER_ASSIGNED, (data: any) => {
       console.log('🚗 Driver assigned to order:', data);
     });
 
-    setSubscribedChannels(prev => new Map(prev).set(channelName, channel));
+    subscribedChannels.set(channelName, channel);
     console.log('✅ Subscribed to order tracking:', orderNumber);
   }, [pusherClient, subscribedChannels]);
 
-  // Unsubscribe from order tracking
   const unsubscribeFromOrder = useCallback((orderNumber: string) => {
+    if (!pusherClient) return;
+
+    const { client, getPusherChannels } = pusherClient;
     const channelName = getPusherChannels.orderTracking(orderNumber);
     const channel = subscribedChannels.get(channelName);
 
     if (channel) {
       channel.unbind_all();
-      pusherClient.unsubscribe(channelName);
-      
-      setSubscribedChannels(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(channelName);
-        return newMap;
-      });
-      
+      client.unsubscribe(channelName);
+      subscribedChannels.delete(channelName);
       console.log('❌ Unsubscribed from order tracking:', orderNumber);
     }
   }, [pusherClient, subscribedChannels]);
 
-  // Clear all notifications
   const clearNotifications = useCallback(() => {
     setNotifications([]);
   }, []);
 
-  // Mark notification as read
   const markNotificationRead = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);

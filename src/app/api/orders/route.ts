@@ -1,38 +1,32 @@
+// src/app/api/orders/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import OrderModel from '@/models/Order';
-import jwt from "jsonwebtoken";
 
-// Middleware xác thực token
-async function verifyToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-
-  if (!authHeader) {
-    return { error: "No token provided" };
+// Helper function to get authenticated user
+async function getAuthUser(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user) {
+    return {
+      error: NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    };
   }
-
-  const token = authHeader.split(" ")[1];
-
-  if (!token) {
-    return { error: "Invalid token format" };
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    return { decoded };
-  } catch (e) {
-    return { error: "Token invalid or expired" };
-  }
+  
+  return { user: session.user };
 }
 
-// ===================== GET ORDERS ===================== //
+// ===================== GET ORDERS =====================
 export async function GET(request: NextRequest) {
+  const authResult = await getAuthUser(request);
+  if (authResult.error) return authResult.error;
+  
   try {
-    const verify = await verifyToken(request);
-    if (verify.error) {
-      return NextResponse.json({ success: false, error: verify.error }, { status: 401 });
-    }
-
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -68,24 +62,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ===================== CREATE ORDER ===================== //
+// ===================== CREATE ORDER =====================
 export async function POST(request: NextRequest) {
-  try {
-    const verify = await verifyToken(request);
-    if (verify.error) {
-      return NextResponse.json({ success: false, error: verify.error }, { status: 401 });
-    }
+  const authResult = await getAuthUser(request);
+  if (authResult.error) return authResult.error;
+  
+  const { user } = authResult;
 
+  try {
     await connectDB();
 
     const body = await request.json();
+
+    // Validate required fields
+    if (!body.restaurantId || !body.items || !Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid order data' },
+        { status: 400 }
+      );
+    }
 
     const estimatedDeliveryTime = new Date();
     estimatedDeliveryTime.setMinutes(estimatedDeliveryTime.getMinutes() + 30);
 
     const orderData = {
       ...body,
-      customerId: verify.decoded._id,  // Lấy ID trong token
+      customerId: user.id,
       estimatedDeliveryTime,
       status: 'pending',
     };
@@ -105,14 +107,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ===================== UPDATE ORDER ===================== //
+// ===================== UPDATE ORDER =====================
 export async function PUT(request: NextRequest) {
-  try {
-    const verify = await verifyToken(request);
-    if (verify.error) {
-      return NextResponse.json({ success: false, error: verify.error }, { status: 401 });
-    }
+  const authResult = await getAuthUser(request);
+  if (authResult.error) return authResult.error;
 
+  try {
     await connectDB();
 
     const body = await request.json();
