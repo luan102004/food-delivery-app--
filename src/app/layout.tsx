@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { RealtimeProvider } from '@/contexts/RealtimeContext'; // ← ADD THIS
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+      <ErrorBoundary>
         <AuthProvider>
           <LanguageProvider>
             <CartProvider>
@@ -37,6 +39,7 @@ export default function RootLayout({
             </CartProvider>
           </LanguageProvider>
         </AuthProvider>
+      </ErrorBoundary>
       </body>
     </html>
   );

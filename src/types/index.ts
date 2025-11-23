@@ -1,3 +1,5 @@
+// src/types/index.ts - COMPLETE FIXED VERSION
+
 // User Types
 export type UserRole = 'customer' | 'restaurant' | 'driver' | 'admin';
 
@@ -9,8 +11,11 @@ export interface User {
   role: UserRole;
   avatar?: string;
   address?: Address;
+  passwordHash?: string; // ✅ ADDED - Missing type
   createdAt: Date;
   updatedAt: Date;
+  // ✅ ADDED - Methods for password management
+  comparePassword?: (password: string) => Promise<boolean>;
 }
 
 export interface Address {
@@ -39,6 +44,7 @@ export interface Restaurant {
   openingHours: OpeningHours;
   isOpen: boolean;
   createdAt: Date;
+  updatedAt: Date; // ✅ ADDED
 }
 
 export interface OpeningHours {
@@ -70,6 +76,7 @@ export interface MenuItem {
   preparationTime: number;
   tags: string[];
   createdAt: Date;
+  updatedAt?: Date; // ✅ ADDED
 }
 
 // Order Types
@@ -110,6 +117,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   notes?: string;
+  image?: string; // ✅ ADDED - For cart display
 }
 
 // Promotion Types
@@ -129,6 +137,7 @@ export interface Promotion {
   usageLimit: number;
   usedCount: number;
   createdAt: Date;
+  updatedAt?: Date; // ✅ ADDED
 }
 
 // Driver Location Types
@@ -144,6 +153,7 @@ export interface DriverLocation {
   isAvailable: boolean;
   currentOrderId?: string;
   updatedAt: Date;
+  createdAt?: Date; // ✅ ADDED
 }
 
 // Cart Types
@@ -159,12 +169,15 @@ export interface AnalyticsData {
   customers: number;
   growth: number;
   chartData: ChartDataPoint[];
+  topItems?: Array<{ name: string; count: number; revenue?: number }>; // ✅ ADDED
 }
 
 export interface ChartDataPoint {
   date: string;
   value: number;
   label?: string;
+  revenue?: number; // ✅ ADDED - For revenue charts
+  orders?: number; // ✅ ADDED - For order charts
 }
 
 // Language Types
@@ -172,4 +185,125 @@ export type Language = 'en' | 'vi';
 
 export interface Translations {
   [key: string]: string | Translations;
+}
+
+// ✅ ADDED - Review Types (Referenced but not defined)
+export interface Review {
+  _id: string;
+  orderId: string;
+  customerId: string;
+  restaurantId: string;
+  driverId?: string;
+  foodRating: number;
+  serviceRating: number;
+  deliveryRating?: number;
+  overallRating: number;
+  comment?: string;
+  images?: string[];
+  response?: {
+    text: string;
+    respondedAt: Date;
+  };
+  isVerified: boolean;
+  isHelpful?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ✅ ADDED - Notification Types
+export interface Notification {
+  _id: string;
+  userId: string;
+  type: 'order_update' | 'promotion' | 'system' | 'driver_assigned' | 'new_order';
+  title: string;
+  message: string;
+  data?: any;
+  isRead: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ✅ ADDED - API Response Types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  count?: number;
+}
+
+// ✅ ADDED - Pagination Types
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  order?: 'asc' | 'desc';
+}
+
+// ✅ ADDED - Filter Types
+export interface RestaurantFilters {
+  cuisine?: string;
+  search?: string;
+  minRating?: number;
+  isOpen?: boolean;
+  lat?: number;
+  lng?: number;
+  maxDistance?: number;
+}
+
+export interface OrderFilters {
+  status?: OrderStatus;
+  customerId?: string;
+  restaurantId?: string;
+  driverId?: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+// ✅ ADDED - Form Data Types
+export interface SignUpFormData {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  confirmPassword: string;
+  role: UserRole;
+}
+
+export interface SignInFormData {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+// ✅ ADDED - Map Types (if not in separate file)
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+export interface LocationData {
+  coordinates: Coordinates;
+  address: string;
+  heading?: number;
+  speed?: number;
+  timestamp?: string;
+}
+
+// ✅ ADDED - Analytics Cache Types
+export interface AnalyticsCache {
+  _id: string;
+  entityId: string;
+  entityType: 'restaurant' | 'driver' | 'system';
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  date: Date;
+  metrics: {
+    revenue: number;
+    orders: number;
+    customers: number;
+    avgOrderValue: number;
+    topItems?: Array<{ name: string; count: number }>;
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }
