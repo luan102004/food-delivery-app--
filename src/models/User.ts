@@ -37,20 +37,20 @@ const UserSchema = new Schema<User>(
     },
     avatar: { type: String },
     address: { type: AddressSchema },
-    passwordHash: { type: String, select: false }, // Added passwordHash field
+    passwordHash: { type: String, select: false },
   },
   {
     timestamps: true,
     toJSON: { 
       virtuals: true,
-      transform: function(doc, ret) {
-        delete ret.passwordHash; // Remove passwordHash from JSON output
+      transform: function(_doc, ret) {
+        delete ret.passwordHash;
         return ret;
       }
     },
     toObject: { 
       virtuals: true,
-      transform: function(doc, ret) {
+      transform: function(_doc, ret) {
         delete ret.passwordHash;
         return ret;
       }
@@ -62,13 +62,42 @@ const UserSchema = new Schema<User>(
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 
-// Ensure unique email index
-UserSchema.post('save', function(error: any, doc: any, next: any) {
-  if (error.name === 'MongoError' && error.code === 11000) {
+// Instance method: Compare password
+UserSchema.methods.comparePassword = async function(password: string): Promise<boolean> {
+  if (!this.passwordHash) return false;
+  
+  try {
+    const bcrypt = await import('bcryptjs');
+    return await bcrypt.compare(password, this.passwordHash);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
+};
+
+// Static method: Hash password
+UserSchema.statics.hashPassword = async function(password: string): Promise<string> {
+  const bcrypt = await import('bcryptjs');
+  return await bcrypt.hash(password, 10);
+};
+
+// Handle duplicate email error
+UserSchema.post('save', function(error: any, _doc: any, next: any) {
+  if (error.name === 'MongoServerError' && error.code === 11000) {
     next(new Error('Email already exists'));
   } else {
     next(error);
   }
+});
+
+// Pre-save hook to hash password if modified
+UserSchema.pre('save', async function(next) {
+  if (!this.isModified('passwordHash')) {
+    return next();
+  }
+  
+  // Password should already be hashed by the static method
+  next();
 });
 
 const UserModel: Model<User> = 

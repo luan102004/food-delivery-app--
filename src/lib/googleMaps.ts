@@ -1,15 +1,24 @@
-// src/lib/googleMaps.ts - FIXED VERSION
+// src/lib/googleMaps.ts - IMPROVED VERSION
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
+// Better error messaging
 if (!GOOGLE_MAPS_API_KEY && typeof window !== 'undefined') {
-  console.warn("⚠️ Google Maps API key is not configured");
+  console.error("════════════════════════════════════════════");
+  console.error("❌ Google Maps API Key Missing!");
+  console.error("════════════════════════════════════════════");
+  console.error("📝 To fix this:");
+  console.error("1. Go to: https://console.cloud.google.com/");
+  console.error("2. Create a project and enable Maps JavaScript API");
+  console.error("3. Create credentials → API Key");
+  console.error("4. Add to .env.local:");
+  console.error("   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_key_here");
+  console.error("════════════════════════════════════════════");
 }
 
 let googleLoading = false;
 let googleLoaded = false;
 
-// Load Google Maps script
 function loadGoogleScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
@@ -23,7 +32,7 @@ function loadGoogleScript(): Promise<void> {
     }
 
     if (!GOOGLE_MAPS_API_KEY) {
-      reject(new Error('Google Maps API key is not configured'));
+      reject(new Error('Google Maps API key is not configured. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local'));
       return;
     }
 
@@ -35,10 +44,13 @@ function loadGoogleScript(): Promise<void> {
 
     script.onload = () => {
       googleLoaded = true;
+      console.log('✅ Google Maps loaded successfully');
       resolve();
     };
-    script.onerror = (err) => {
+    
+    script.onerror = () => {
       googleLoading = false;
+      console.error('❌ Failed to load Google Maps');
       reject(new Error('Failed to load Google Maps'));
     };
 
@@ -57,7 +69,7 @@ export const initGoogleMaps = async (): Promise<typeof google> => {
 
   if (googleLoading) {
     return new Promise((resolve, reject) => {
-      const maxAttempts = 50; // 5 seconds max
+      const maxAttempts = 50;
       let attempts = 0;
       
       const timer = setInterval(() => {
@@ -80,7 +92,6 @@ export const initGoogleMaps = async (): Promise<typeof google> => {
     googleLoaded = true;
     googleLoading = false;
     
-    // Wait for google to be available
     if (!window.google) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -88,7 +99,7 @@ export const initGoogleMaps = async (): Promise<typeof google> => {
     return window.google;
   } catch (error) {
     googleLoading = false;
-    console.error("❌ Failed to load Google Maps:", error);
+    console.error("❌ Failed to initialize Google Maps:", error);
     throw error;
   }
 };

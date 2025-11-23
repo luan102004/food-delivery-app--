@@ -17,21 +17,37 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
+  // Initialize client-side only
   useEffect(() => {
-    const saved = localStorage.getItem('cart');
-    if (saved) {
-      try {
-        setItems(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse cart:', e);
+    setIsClient(true);
+    
+    // Load from localStorage only on client
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cart');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setItems(Array.isArray(parsed) ? parsed : []);
+        } catch (e) {
+          console.error('Failed to parse cart:', e);
+          localStorage.removeItem('cart'); // Clear corrupted data
+        }
       }
     }
   }, []);
 
+  // Save to localStorage when items change
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
-  }, [items]);
+    if (isClient && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cart', JSON.stringify(items));
+      } catch (e) {
+        console.error('Failed to save cart:', e);
+      }
+    }
+  }, [items, isClient]);
 
   const addItem = (item: CartItem) => {
     setItems(prev => {
@@ -63,7 +79,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const clearCart = () => setItems([]);
+  const clearCart = () => {
+    setItems([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cart');
+    }
+  };
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);

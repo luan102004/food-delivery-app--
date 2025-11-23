@@ -1,9 +1,9 @@
-// src/contexts/RealtimeContext.tsx - FIXED VERSION
+// src/contexts/RealtimeContext.tsx - FIXED
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import type { Channel } from 'pusher-js';
+import Pusher from 'pusher-js';
 
 interface DriverLocation {
   lat: number;
@@ -48,155 +48,122 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [orderUpdates, setOrderUpdates] = useState<OrderUpdate[]>([]);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  const [subscribedChannels] = useState<Map<string, Channel>>(new Map());
-  const [pusherClient, setPusherClient] = useState<any>(null);
+  const [pusherClient, setPusherClient] = useState<Pusher | null>(null);
+  const [subscribedChannels] = useState<Map<string, any>>(new Map());
 
-  // Initialize Pusher Client (only on client side)
+  // Initialize Pusher (client-side only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Dynamic import to avoid SSR issues
-    import('@/lib/pusher').then(({ getPusherClient, PUSHER_EVENTS, getPusherChannels }) => {
-      try {
-        const client = getPusherClient();
-        setPusherClient({ client, PUSHER_EVENTS, getPusherChannels });
+    const PUSHER_KEY = process.env.NEXT_PUBLIC_PUSHER_APP_KEY;
+    const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER;
 
-        client.connection.bind('connected', () => {
-          console.log('✅ Pusher connected');
-          setIsConnected(true);
-        });
+    if (!PUSHER_KEY || !PUSHER_CLUSTER) {
+      console.warn('⚠️ Pusher credentials missing');
+      return;
+    }
 
-        client.connection.bind('disconnected', () => {
-          console.log('❌ Pusher disconnected');
-          setIsConnected(false);
-        });
+    try {
+      const client = new Pusher(PUSHER_KEY, {
+        cluster: PUSHER_CLUSTER,
+        enabledTransports: ['ws', 'wss'],
+        forceTLS: true,
+      });
 
-        client.connection.bind('error', (error: any) => {
-          console.error('❌ Pusher error:', error);
-        });
-      } catch (error) {
-        console.error('Failed to initialize Pusher:', error);
-      }
-    });
+      client.connection.bind('connected', () => {
+        console.log('✅ Pusher connected');
+        setIsConnected(true);
+      });
 
-    return () => {
-      if (pusherClient?.client) {
-        pusherClient.client.connection.unbind_all();
-      }
-    };
+      client.connection.bind('disconnected', () => {
+        console.log('❌ Pusher disconnected');
+        setIsConnected(false);
+      });
+
+      client.connection.bind('error', (error: any) => {
+        console.error('❌ Pusher error:', error);
+      });
+
+      setPusherClient(client);
+
+      return () => {
+        client.connection.unbind_all();
+        client.disconnect();
+      };
+    } catch (error) {
+      console.error('Failed to initialize Pusher:', error);
+    }
   }, []);
 
-  // Subscribe to user's personal channel
+  // Subscribe to user's channel
   useEffect(() => {
     if (!session?.user?.id || !pusherClient) return;
 
-    const { client, PUSHER_EVENTS, getPusherChannels } = pusherClient;
     const userId = session.user.id;
     const role = session.user.role as string;
 
     let channelName = '';
     
     if (role === 'customer') {
-      channelName = getPusherChannels.customerOrder(userId);
+      channelName = `private-customer-${userId}`;
     } else if (role === 'restaurant') {
-      channelName = getPusherChannels.restaurantOrders(userId);
+      channelName = `private-restaurant-${userId}`;
     } else if (role === 'driver') {
-      channelName = getPusherChannels.driverChannel(userId);
+      channelName = `private-driver-${userId}`;
     }
 
     if (!channelName) return;
 
-    const channel = client.subscribe(channelName);
+    const channel = pusherClient.subscribe(channelName);
 
-    channel.bind(PUSHER_EVENTS.ORDER_STATUS_CHANGED, (data: OrderUpdate) => {
-      console.log('📦 Order status changed:', data);
+    channel.bind('order:status-changed', (data: OrderUpdate) => {
+      console.log('📦 Order update:', data);
       setOrderUpdates(prev => [data, ...prev].slice(0, 20));
     });
 
-    channel.bind(PUSHER_EVENTS.RESTAURANT_NEW_ORDER, (data: any) => {
-      console.log('🆕 New order received:', data);
-      setNotifications(prev => [
-        {
-          id: data.order.orderNumber,
-          title: 'New Order!',
-          message: `Order #${data.order.orderNumber} - $${data.order.total}`,
-          type: 'new_order',
-          data: data.order,
-          timestamp: data.timestamp,
-        },
-        ...prev,
-      ]);
-    });
-
-    channel.bind(PUSHER_EVENTS.DRIVER_ASSIGNED, (data: any) => {
-      console.log('🚗 Driver assigned:', data);
-      setNotifications(prev => [
-        {
-          id: `driver-${data.orderNumber}`,
-          title: 'Driver Assigned!',
-          message: `${data.driver.name} is on the way`,
-          type: 'driver_assigned',
-          data: data.driver,
-          timestamp: data.timestamp,
-        },
-        ...prev,
-      ]);
-    });
-
-    channel.bind(PUSHER_EVENTS.NOTIFICATION_NEW, (data: any) => {
+    channel.bind('notification:new', (data: any) => {
       console.log('🔔 New notification:', data);
       setNotifications(prev => [data.notification, ...prev]);
     });
 
     return () => {
       channel.unbind_all();
-      client.unsubscribe(channelName);
+      pusherClient.unsubscribe(channelName);
     };
   }, [session, pusherClient]);
 
   const subscribeToOrder = useCallback((orderNumber: string) => {
     if (!pusherClient) return;
 
-    const { client, PUSHER_EVENTS, getPusherChannels } = pusherClient;
-    const channelName = getPusherChannels.orderTracking(orderNumber);
+    const channelName = `presence-order-${orderNumber}`;
     
     if (subscribedChannels.has(channelName)) {
-      console.log('Already subscribed to', channelName);
       return;
     }
 
-    const channel = client.subscribe(channelName);
+    const channel = pusherClient.subscribe(channelName);
 
-    channel.bind(PUSHER_EVENTS.ORDER_STATUS_CHANGED, (data: OrderUpdate) => {
-      console.log('📦 Order status update:', data);
+    channel.bind('order:status-changed', (data: OrderUpdate) => {
       setOrderUpdates(prev => [data, ...prev].slice(0, 20));
     });
 
-    channel.bind(PUSHER_EVENTS.DRIVER_LOCATION_UPDATED, (data: any) => {
-      console.log('📍 Driver location updated:', data);
+    channel.bind('driver:location-updated', (data: any) => {
       setDriverLocation(data.location);
     });
 
-    channel.bind(PUSHER_EVENTS.DRIVER_ASSIGNED, (data: any) => {
-      console.log('🚗 Driver assigned to order:', data);
-    });
-
     subscribedChannels.set(channelName, channel);
-    console.log('✅ Subscribed to order tracking:', orderNumber);
   }, [pusherClient, subscribedChannels]);
 
   const unsubscribeFromOrder = useCallback((orderNumber: string) => {
     if (!pusherClient) return;
 
-    const { client, getPusherChannels } = pusherClient;
-    const channelName = getPusherChannels.orderTracking(orderNumber);
+    const channelName = `presence-order-${orderNumber}`;
     const channel = subscribedChannels.get(channelName);
 
     if (channel) {
       channel.unbind_all();
-      client.unsubscribe(channelName);
+      pusherClient.unsubscribe(channelName);
       subscribedChannels.delete(channelName);
-      console.log('❌ Unsubscribed from order tracking:', orderNumber);
     }
   }, [pusherClient, subscribedChannels]);
 
