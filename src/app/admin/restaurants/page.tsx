@@ -53,12 +53,14 @@ export default function AdminRestaurantsPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
+        
+        {/* HEADER */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">Restaurant Management</h1>
             <p className="text-gray-600">Manage all restaurants in the system</p>
           </div>
-          <Button variant="primary" size="lg">
+          <Button variant="primary" size="lg" aria-label="Add restaurant">
             <Plus className="w-5 h-5" />
             Add Restaurant
           </Button>
@@ -88,12 +90,13 @@ export default function AdminRestaurantsPage() {
               placeholder="Search restaurants by name or cuisine..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search restaurants"
               icon={<Search className="w-5 h-5" />}
             />
           </div>
         </Card>
 
-        {/* Restaurants Grid */}
+        {/* Restaurants */}
         {loading ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -107,6 +110,8 @@ export default function AdminRestaurantsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRestaurants.map((restaurant) => (
               <Card key={restaurant._id}>
+                
+                {/* Image */}
                 <div className="aspect-video bg-gradient-to-br from-gray-200 to-gray-300 relative">
                   <div className="absolute inset-0 flex items-center justify-center text-6xl">
                     {restaurant.image || '🍽️'}
@@ -118,6 +123,7 @@ export default function AdminRestaurantsPage() {
                   )}
                 </div>
 
+                {/* INFO */}
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -138,19 +144,24 @@ export default function AdminRestaurantsPage() {
                     <span className="line-clamp-1">{restaurant.address?.street}</span>
                   </div>
 
-                  {restaurant.cuisine && restaurant.cuisine.length > 0 && (
+                  {restaurant.cuisine?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
                       {restaurant.cuisine.map((c: string, idx: number) => (
-                        <span key={idx} className="bg-primary-50 text-primary-700 text-xs px-2 py-1 rounded-full">
+                        <span
+                          key={idx}
+                          className="bg-primary-50 text-primary-700 text-xs px-2 py-1 rounded-full"
+                        >
                           {c}
                         </span>
                       ))}
                     </div>
                   )}
 
+                  {/* ACTION BUTTONS */}
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => toggleRestaurantStatus(restaurant._id, restaurant.isOpen)}
+                      aria-label={restaurant.isOpen ? 'Hide restaurant' : 'Show restaurant'}
                       className={`flex items-center justify-center gap-1 px-3 py-2 rounded-lg font-semibold text-sm transition-colors ${
                         restaurant.isOpen
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -159,13 +170,22 @@ export default function AdminRestaurantsPage() {
                     >
                       {restaurant.isOpen ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
-                    <button className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg font-semibold text-sm transition-colors">
+
+                    <button
+                      aria-label="Edit restaurant"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg font-semibold text-sm transition-colors"
+                    >
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button className="flex items-center justify-center gap-1 px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg font-semibold text-sm transition-colors">
+
+                    <button
+                      aria-label="Delete restaurant"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg font-semibold text-sm transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+
                 </div>
               </Card>
             ))}
