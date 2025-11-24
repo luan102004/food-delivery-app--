@@ -9,9 +9,11 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    serverActions: true,
-  },
-}
 
-module.exports = nextConfig
+  // ❌ Remove this completely – NOT allowed in Next.js 14+
+  // experimental: {
+  //   serverActions: true,
+  // },
+};
+
+module.exports = nextConfig;

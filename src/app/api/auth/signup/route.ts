@@ -1,3 +1,4 @@
+//  src/app/api/auth/signup/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import UserModel from '@/models/User';
@@ -71,3 +72,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+//

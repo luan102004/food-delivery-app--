@@ -1,3 +1,4 @@
+// src/app/api/driver/status/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import DriverLocationModel from '@/models/DriverLocation';
@@ -32,3 +33,4 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+//

@@ -1,3 +1,4 @@
+// src/models/Order.ts
 import mongoose, { Schema, Model } from 'mongoose';
 import type { Order, OrderItem, OrderStatus, Address } from '@/types';
 
@@ -75,3 +76,4 @@ OrderSchema.pre('save', function (next) {
 const OrderModel: Model<Order> = mongoose.models.Order || mongoose.model<Order>('Order', OrderSchema);
 
 export default OrderModel;
+//

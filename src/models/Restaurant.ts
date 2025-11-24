@@ -1,16 +1,13 @@
+// src/models/Restaurant.ts
 import mongoose, { Schema, Model } from 'mongoose';
-import type { Restaurant, Address, OpeningHours, TimeSlot } from '@/types';
+import type { Restaurant } from '@/types';
 
-const TimeSlotSchema = new Schema<TimeSlot>(
-  {
-    open: { type: String, required: true },
-    close: { type: String, required: true },
-    isClosed: { type: Boolean, default: false },
-  },
+const TimeSlotSchema = new Schema(
+  { open: { type: String, required: true }, close: { type: String, required: true }, isClosed: { type: Boolean, default: false } },
   { _id: false }
 );
 
-const OpeningHoursSchema = new Schema<OpeningHours>(
+const OpeningHoursSchema = new Schema(
   {
     monday: { type: TimeSlotSchema, required: true },
     tuesday: { type: TimeSlotSchema, required: true },
@@ -23,15 +20,15 @@ const OpeningHoursSchema = new Schema<OpeningHours>(
   { _id: false }
 );
 
-const AddressSchema = new Schema<Address>(
+const AddressGeo = new Schema(
   {
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    zipCode: { type: String, required: true },
+    street: { type: String },
+    city: { type: String },
+    state: { type: String },
+    zipCode: { type: String },
     coordinates: {
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: [0, 0] }, // [lng, lat]
     },
   },
   { _id: false }
@@ -41,30 +38,29 @@ const RestaurantSchema = new Schema<Restaurant>(
   {
     name: { type: String, required: true },
     description: { type: String, required: true },
-    ownerId: { type: String, required: true, ref: 'User' },
-    address: { type: AddressSchema, required: true },
-    phone: { type: String, required: true },
-    email: { type: String, required: true },
-    image: { type: String },
+    ownerId: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+    address: { type: AddressGeo, required: true, default: {} },
+    phone: { type: String, default: '' },
+    email: { type: String, default: '' },
+    image: { type: String, default: '' },
     rating: { type: Number, default: 0, min: 0, max: 5 },
     cuisine: [{ type: String }],
-    openingHours: { type: OpeningHoursSchema, required: true },
+    openingHours: { type: OpeningHoursSchema, required: true, default: {} },
     isOpen: { type: Boolean, default: true },
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      transform(_doc, ret) { ret.id = ret._id; delete ret._id; delete ret.__v; }
+    },
   }
 );
 
-// Indexes
 RestaurantSchema.index({ ownerId: 1 });
 RestaurantSchema.index({ 'address.coordinates': '2dsphere' });
 RestaurantSchema.index({ cuisine: 1 });
 RestaurantSchema.index({ rating: -1 });
 
-const RestaurantModel: Model<Restaurant> =
-  mongoose.models.Restaurant || mongoose.model<Restaurant>('Restaurant', RestaurantSchema);
-
+const RestaurantModel: Model<Restaurant> = mongoose.models.Restaurant || mongoose.model<Restaurant>('Restaurant', RestaurantSchema);
 export default RestaurantModel;

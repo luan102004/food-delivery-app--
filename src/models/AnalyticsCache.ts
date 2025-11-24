@@ -1,3 +1,4 @@
+// src/models/AnalyticsCache.ts
 import mongoose, { Schema, Model } from 'mongoose';
 
 export interface AnalyticsCache {
@@ -40,3 +41,4 @@ const AnalyticsCacheModel: Model<AnalyticsCache> =
   mongoose.models.AnalyticsCache || mongoose.model<AnalyticsCache>('AnalyticsCache', AnalyticsCacheSchema);
 
 export default AnalyticsCacheModel;
+//

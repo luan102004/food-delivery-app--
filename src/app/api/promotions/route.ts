@@ -1,3 +1,4 @@
+// src/app/api/promotions/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import PromotionModel from '@/models/Promotion';
@@ -131,3 +132,4 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+//

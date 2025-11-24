@@ -1,3 +1,4 @@
+// src/models/UserPromotion.ts
 import mongoose, { Schema, Model } from 'mongoose';
 
 export interface UserPromotion {
@@ -27,3 +28,4 @@ const UserPromotionModel: Model<UserPromotion> =
   mongoose.models.UserPromotion || mongoose.model<UserPromotion>('UserPromotion', UserPromotionSchema);
 
 export default UserPromotionModel;
+//

@@ -1,3 +1,4 @@
+// src/models/Promotion.ts
 import mongoose, { Schema, Model } from 'mongoose';
 import type { Promotion, PromotionType } from '@/types';
 
@@ -39,3 +40,4 @@ const PromotionModel: Model<Promotion> =
   mongoose.models.Promotion || mongoose.model<Promotion>('Promotion', PromotionSchema);
 
 export default PromotionModel;
+//

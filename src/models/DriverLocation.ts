@@ -1,3 +1,4 @@
+// src/models/DriverLocation.ts
 import mongoose, { Schema, Model } from 'mongoose';
 import type { DriverLocation } from '@/types';
 
@@ -29,3 +30,4 @@ const DriverLocationModel: Model<DriverLocation> =
   mongoose.models.DriverLocation || mongoose.model<DriverLocation>('DriverLocation', DriverLocationSchema);
 
 export default DriverLocationModel;
+//

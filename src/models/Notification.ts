@@ -1,3 +1,4 @@
+// src/models/Notification.ts
 import mongoose, { Schema, Model } from 'mongoose';
 
 export interface Notification {
@@ -37,3 +38,4 @@ const NotificationModel: Model<Notification> =
   mongoose.models.Notification || mongoose.model<Notification>('Notification', NotificationSchema);
 
 export default NotificationModel;
+//
