@@ -1,24 +1,10 @@
-// src/types/index.ts - COMPLETE FIXED VERSION
+// src/types/index.ts
+import { Types } from "mongoose";
 
-// User Types
-export type UserRole = 'customer' | 'restaurant' | 'driver' | 'admin';
-
-export interface User {
-  _id: string;
-  email: string;
-  name: string;
-  phone?: string;
-  role: UserRole;
-  avatar?: string;
-  address?: Address;
-  passwordHash?: string; // ✅ ADDED - Missing type
-  createdAt: Date;
-  updatedAt: Date;
-  // ✅ ADDED - Methods for password management
-  comparePassword?: (password: string) => Promise<boolean>;
-}
-
-export interface Address {
+// =======================
+// USER ADDRESS (Simple)
+// =======================
+export interface UserAddress {
   street: string;
   city: string;
   state: string;
@@ -29,22 +15,48 @@ export interface Address {
   };
 }
 
-// Restaurant Types
-export interface Restaurant {
+// =======================
+// RESTAURANT GEOJSON ADDRESS
+// =======================
+export interface LocationGeoJSON {
+  type: "Point";
+  coordinates: [number, number]; // [lng, lat]
+}
+
+export interface GeoAddress {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  coordinates: LocationGeoJSON;
+}
+
+// =======================
+// USER
+// =======================
+export type UserRole = "customer" | "restaurant" | "driver" | "admin";
+
+export interface User {
   _id: string;
-  name: string;
-  description: string;
-  ownerId: string;
-  address: Address;
-  phone: string;
   email: string;
-  image: string;
-  rating: number;
-  cuisine: string[];
-  openingHours: OpeningHours;
-  isOpen: boolean;
+  name: string;
+  phone?: string;
+  role: UserRole;
+  avatar?: string;
+  address?: UserAddress;
+  passwordHash?: string;
   createdAt: Date;
-  updatedAt: Date; // ✅ ADDED
+  updatedAt: Date;
+  comparePassword?: (password: string) => Promise<boolean>;
+}
+
+// =======================
+// RESTAURANT
+// =======================
+export interface TimeSlot {
+  open: string;
+  close: string;
+  isClosed: boolean;
 }
 
 export interface OpeningHours {
@@ -57,38 +69,53 @@ export interface OpeningHours {
   sunday: TimeSlot;
 }
 
-export interface TimeSlot {
-  open: string;
-  close: string;
-  isClosed: boolean;
-}
-
-// Menu Types
-export interface MenuItem {
-  _id: string;
-  restaurantId: string;
+export interface Restaurant {
+  _id: string | Types.ObjectId;
   name: string;
   description: string;
-  price: number;
+  ownerId: string | Types.ObjectId;
+
+  address: GeoAddress;
+
+  phone?: string;
+  email?: string;
   image: string;
-  category: string;
-  isAvailable: boolean;
-  preparationTime: number;
-  tags: string[];
+
+  rating: number;
+  cuisine: string[];
+  openingHours: OpeningHours;
+
+  isOpen: boolean;
+  isAddressComplete: boolean;
+
   createdAt: Date;
-  updatedAt?: Date; // ✅ ADDED
+  updatedAt: Date;
+
+  canAcceptOrders?: boolean;
+  id?: string;
 }
 
-// Order Types
-export type OrderStatus = 
-  | 'pending' 
-  | 'confirmed' 
-  | 'preparing' 
-  | 'ready' 
-  | 'picked_up' 
-  | 'on_the_way' 
-  | 'delivered' 
-  | 'cancelled';
+// =======================
+// ORDER
+// =======================
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "picked_up"
+  | "on_the_way"
+  | "delivered"
+  | "cancelled";
+
+export interface OrderItem {
+  menuItemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  notes?: string;
+  image?: string;
+}
 
 export interface Order {
   _id: string;
@@ -103,7 +130,7 @@ export interface Order {
   discount: number;
   total: number;
   status: OrderStatus;
-  deliveryAddress: Address;
+  deliveryAddress: UserAddress;
   promotionId?: string;
   notes?: string;
   estimatedDeliveryTime?: Date;
@@ -111,17 +138,10 @@ export interface Order {
   updatedAt: Date;
 }
 
-export interface OrderItem {
-  menuItemId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  notes?: string;
-  image?: string; // ✅ ADDED - For cart display
-}
-
-// Promotion Types
-export type PromotionType = 'percentage' | 'fixed' | 'free_delivery';
+// =======================
+// PROMOTION
+// =======================
+export type PromotionType = "percentage" | "fixed" | "free_delivery";
 
 export interface Promotion {
   _id: string;
@@ -137,10 +157,12 @@ export interface Promotion {
   usageLimit: number;
   usedCount: number;
   createdAt: Date;
-  updatedAt?: Date; // ✅ ADDED
+  updatedAt?: Date;
 }
 
-// Driver Location Types
+// =======================
+// DRIVER LOCATION
+// =======================
 export interface DriverLocation {
   _id: string;
   driverId: string;
@@ -153,41 +175,40 @@ export interface DriverLocation {
   isAvailable: boolean;
   currentOrderId?: string;
   updatedAt: Date;
-  createdAt?: Date; // ✅ ADDED
+  createdAt?: Date;
 }
 
-// Cart Types
+// =======================
+// CART
+// =======================
 export interface CartItem extends OrderItem {
   image: string;
   restaurantId: string;
 }
 
-// Analytics Types
+// =======================
+// ANALYTICS
+// =======================
+export interface ChartDataPoint {
+  date: string;
+  value: number;
+  label?: string;
+  revenue?: number;
+  orders?: number;
+}
+
 export interface AnalyticsData {
   revenue: number;
   orders: number;
   customers: number;
   growth: number;
   chartData: ChartDataPoint[];
-  topItems?: Array<{ name: string; count: number; revenue?: number }>; // ✅ ADDED
+  topItems?: Array<{ name: string; count: number; revenue?: number }>;
 }
 
-export interface ChartDataPoint {
-  date: string;
-  value: number;
-  label?: string;
-  revenue?: number; // ✅ ADDED - For revenue charts
-  orders?: number; // ✅ ADDED - For order charts
-}
-
-// Language Types
-export type Language = 'en' | 'vi';
-
-export interface Translations {
-  [key: string]: string | Translations;
-}
-
-// ✅ ADDED - Review Types (Referenced but not defined)
+// =======================
+// REVIEWS
+// =======================
 export interface Review {
   _id: string;
   orderId: string;
@@ -210,11 +231,18 @@ export interface Review {
   updatedAt: Date;
 }
 
-// ✅ ADDED - Notification Types
+// =======================
+// NOTIFICATION
+// =======================
 export interface Notification {
   _id: string;
   userId: string;
-  type: 'order_update' | 'promotion' | 'system' | 'driver_assigned' | 'new_order';
+  type:
+    | "order_update"
+    | "promotion"
+    | "system"
+    | "driver_assigned"
+    | "new_order";
   title: string;
   message: string;
   data?: any;
@@ -223,7 +251,9 @@ export interface Notification {
   updatedAt: Date;
 }
 
-// ✅ ADDED - API Response Types
+// =======================
+// API RESPONSE
+// =======================
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -232,15 +262,9 @@ export interface ApiResponse<T = any> {
   count?: number;
 }
 
-// ✅ ADDED - Pagination Types
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  order?: 'asc' | 'desc';
-}
-
-// ✅ ADDED - Filter Types
+// =======================
+// FILTERS
+// =======================
 export interface RestaurantFilters {
   cuisine?: string;
   search?: string;
@@ -260,7 +284,9 @@ export interface OrderFilters {
   endDate?: Date;
 }
 
-// ✅ ADDED - Form Data Types
+// =======================
+// AUTH FORM TYPES
+// =======================
 export interface SignUpFormData {
   name: string;
   email: string;
@@ -276,7 +302,9 @@ export interface SignInFormData {
   rememberMe?: boolean;
 }
 
-// ✅ ADDED - Map Types (if not in separate file)
+// =======================
+// MAP
+// =======================
 export interface Coordinates {
   lat: number;
   lng: number;
@@ -290,12 +318,14 @@ export interface LocationData {
   timestamp?: string;
 }
 
-// ✅ ADDED - Analytics Cache Types
+// =======================
+// ANALYTICS CACHE
+// =======================
 export interface AnalyticsCache {
   _id: string;
   entityId: string;
-  entityType: 'restaurant' | 'driver' | 'system';
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  entityType: "restaurant" | "driver" | "system";
+  period: "daily" | "weekly" | "monthly" | "yearly";
   date: Date;
   metrics: {
     revenue: number;
