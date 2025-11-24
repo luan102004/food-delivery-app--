@@ -1,4 +1,4 @@
-// src/models/User.ts - FIXED VERSION
+// src/models/User.ts - ENHANCED VERSION
 import mongoose, { Schema, Model } from 'mongoose';
 import type { User, UserRole, Address } from '@/types';
 
@@ -9,8 +9,8 @@ const AddressSchema = new Schema<Address>(
     state: { type: String, required: true },
     zipCode: { type: String, required: true },
     coordinates: {
-      lat: { type: Number },
-      lng: { type: Number },
+      lat: { type: Number, required: true },
+      lng: { type: Number, required: true },
     },
   },
   { _id: false }
@@ -38,6 +38,13 @@ const UserSchema = new Schema<User>(
     avatar: { type: String },
     address: { type: AddressSchema },
     passwordHash: { type: String, select: false },
+    // Driver-specific fields
+    vehicleInfo: {
+      type: String,
+      vehicleNumber: String,
+    },
+    isAvailable: { type: Boolean, default: false },
+    rating: { type: Number, default: 0, min: 0, max: 5 },
   },
   {
     timestamps: true,
@@ -61,8 +68,9 @@ const UserSchema = new Schema<User>(
 // Indexes
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
+UserSchema.index({ 'address.coordinates': '2dsphere' });
 
-// Instance method: Compare password
+// Instance methods
 UserSchema.methods.comparePassword = async function(password: string): Promise<boolean> {
   if (!this.passwordHash) return false;
   
@@ -75,33 +83,13 @@ UserSchema.methods.comparePassword = async function(password: string): Promise<b
   }
 };
 
-// Static method: Hash password
+// Static methods
 UserSchema.statics.hashPassword = async function(password: string): Promise<string> {
   const bcrypt = await import('bcryptjs');
   return await bcrypt.hash(password, 10);
 };
 
-// Handle duplicate email error
-UserSchema.post('save', function(error: any, _doc: any, next: any) {
-  if (error.name === 'MongoServerError' && error.code === 11000) {
-    next(new Error('Email already exists'));
-  } else {
-    next(error);
-  }
-});
-
-// Pre-save hook to hash password if modified
-UserSchema.pre('save', async function(next) {
-  if (!this.isModified('passwordHash')) {
-    return next();
-  }
-  
-  // Password should already be hashed by the static method
-  next();
-});
-
 const UserModel: Model<User> = 
   mongoose.models.User || mongoose.model<User>('User', UserSchema);
 
 export default UserModel;
-//

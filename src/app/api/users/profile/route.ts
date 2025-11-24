@@ -1,4 +1,4 @@
-// src/app/api/user/profile/route.ts
+// src/app/api/users/profile/route.ts - ENHANCED VERSION
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       data: user,
     });
   } catch (error: any) {
-    console.error('GET /api/user/profile error:', error);
+    console.error('GET /api/users/profile error:', error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT - Update user profile
+// PUT - Update user profile (ALL ROLES)
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -58,12 +58,16 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { name, phone, address } = body;
+    const { name, phone, address, avatar, vehicleInfo, vehicleNumber } = body;
 
     // Validate coordinates if address is provided
     if (address?.coordinates) {
       const { lat, lng } = address.coordinates;
-      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      if (
+        isNaN(lat) || isNaN(lng) || 
+        lat < -90 || lat > 90 || 
+        lng < -180 || lng > 180
+      ) {
         return NextResponse.json(
           { success: false, error: 'Invalid coordinates' },
           { status: 400 }
@@ -72,9 +76,27 @@ export async function PUT(request: NextRequest) {
     }
 
     const updateData: any = {};
+    
+    // Common fields for all roles
     if (name) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
-    if (address) updateData.address = address;
+    if (avatar !== undefined) updateData.avatar = avatar;
+    if (address) {
+      // Ensure coordinates are present
+      if (!address.coordinates?.lat || !address.coordinates?.lng) {
+        return NextResponse.json(
+          { success: false, error: 'Address must include valid coordinates' },
+          { status: 400 }
+        );
+      }
+      updateData.address = address;
+    }
+    
+    // Driver-specific fields
+    if (session.user.role === 'driver') {
+      if (vehicleInfo !== undefined) updateData.vehicleInfo = vehicleInfo;
+      if (vehicleNumber !== undefined) updateData.vehicleNumber = vehicleNumber;
+    }
 
     const user = await UserModel.findByIdAndUpdate(
       session.user.id,
@@ -95,7 +117,7 @@ export async function PUT(request: NextRequest) {
       message: 'Profile updated successfully',
     });
   } catch (error: any) {
-    console.error('PUT /api/user/profile error:', error);
+    console.error('PUT /api/users/profile error:', error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 400 }
